@@ -13,7 +13,6 @@ import cmath
 import random
 import time
 from typing import Tuple, Dict, Any, List
-import numpy as np
 
 
 class ShorDiscreteLogEngine:
@@ -221,9 +220,19 @@ class ShorDiscreteLogEngine:
         phases = [cmath.exp(2j * math.pi * (val % q) / q) for val in noise]
 
         # Compute Fourier interference
-        fourier_transform = np.fft.fft(phases)
-        magnitudes = np.abs(fourier_transform)
-        peak_to_average = float(np.max(magnitudes) / np.mean(magnitudes))
+        try:
+            import numpy as np
+            fourier_transform = np.fft.fft(phases)
+            magnitudes = np.abs(fourier_transform)
+            peak_to_average = float(np.max(magnitudes) / np.mean(magnitudes))
+        except ImportError:
+            # Pure Python Discrete Fourier Transform fallback (Zero external dependencies)
+            magnitudes = []
+            for k in range(n_samples):
+                val = sum(phases[n] * cmath.exp(-2j * math.pi * k * n / n_samples) for n in range(n_samples))
+                magnitudes.append(abs(val))
+            mean_mag = sum(magnitudes) / len(magnitudes) if magnitudes else 1.0
+            peak_to_average = float(max(magnitudes) / mean_mag) if mean_mag > 0 else 1.0
 
         elapsed = time.time() - t0
 

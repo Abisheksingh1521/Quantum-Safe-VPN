@@ -6,6 +6,10 @@ on:
     tags: [ 'v*' ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   # ============================================================================
@@ -23,11 +27,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+          cache: 'pip'
 
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install cryptography
+          pip install -r requirements.txt
+
+      - name: Validate Python Syntax & Bytecode Compilation
+        run: |
+          python -m compileall .
 
       - name: Execute Quantum-Safe Test Pipeline
         run: |
@@ -55,8 +64,8 @@ jobs:
       - name: Smoke Test Container Runtime
         run: |
           docker run -d --name vpn-test -p 8888:8888 quantum-vpn-gateway:latest
-          sleep 3
-          curl --fail http://localhost:8888/ || exit 1
+          # Wait for container startup and perform healthcheck verification
+          curl --retry 5 --retry-delay 2 --retry-connrefused --fail http://localhost:8888/ || exit 1
           docker stop vpn-test
 
   # ============================================================================
@@ -77,9 +86,16 @@ jobs:
           zip -r dist/Quantum-Safe-VPN-Client-v1.0.0.zip \
             quantum_vpn_gui.py \
             vpn_client.py \
+            vpn_server.py \
             cloud_server.py \
+            vpn_crypto.py \
+            shor_engine.py \
+            vpn_protocol.py \
+            quantum_eavesdropper.py \
+            test_pipeline.py \
             start_gui.bat \
             README.md \
+            requirements.txt \
             Dockerfile
 
       - name: Upload Artifact
